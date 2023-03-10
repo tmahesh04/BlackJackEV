@@ -953,6 +953,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.io.*;
+
 
 import org.javatuples.Pair;
 
@@ -995,8 +997,8 @@ public class App
                     } else {
                         softHandTotalVal += 1;
                     }
-                } else if (hand.get(i).equals("J") || hand.get(i).equals("Q")
-                    || hand.get(i).equals("K")) {
+                } else if (hand.get(i).equals("A") || hand.get(i).equals("B") || hand.get(i).equals("D") || hand.get(i).equals("E")
+                || hand.get(i).equals("J") || hand.get(i).equals("Q") || hand.get(i).equals("K")) {
                     hardHandTotalVal += 10;
                     softHandTotalVal += 10;
                 } else {
@@ -1074,8 +1076,13 @@ public class App
         return retEv;
     }
 
-    public static void main( String[] args )
+    public static void bjGame(File inFile, File outFile ) throws IOException, NullPointerException
     {
+
+        //init the reader and writer
+        BufferedReader br = null;
+        BufferedWriter bw = null;
+
         double sumEV = 0;
         double minloss = 0;
         double maxgain = 0;
@@ -1087,97 +1094,269 @@ public class App
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        for(int numRun = 0; numRun < 1000000; numRun ++){
-            ArrayList<Double> res = new ArrayList<>();
-            Deck currDeck = Deck.newDeck();
-            ArrayList<String> dealerCards = new ArrayList<>();
-            ArrayList<String> ourCards = new ArrayList<>();
-            dealerCards.clear();
-            ourCards.clear();
-            res.clear();
-            int numOthers = Randoms.random().nextInt(4);
-            // System.out.println(numOthers);
-            ArrayList<ArrayList<String>> otherPlayerCards = new ArrayList<>();
-            for(int j = 0; j < numOthers; j ++){
-                otherPlayerCards.add(new ArrayList<>(Arrays.asList("100","100")));
-            }
-            int currItr = 0;
-            if(currDeck.hasNext() == true){
-                for(int i = 0; i < 2; i ++){
-                    for(int itr = 0; itr < numOthers; itr ++){
-                        try{
-                            String retVal = currDeck.next().rank().toString();
-                            otherPlayerCards.get(itr).set(currItr, retVal);
-                        } catch(IndexOutOfBoundsException e){
-                            System.out.println("Errro: " + e);
+        br = new BufferedReader(new FileReader(inFile));
+        bw = new BufferedWriter(new FileWriter(outFile));
+
+        String line;
+        //iterate through all lines in csv
+        while ((line = br.readLine()) != null) {
+            String dealerCard = "";
+            //split columns for output
+            String[] columns = line.split(",");
+            //Check if we can parse the string
+            // System.out.println(line.charAt(0));
+            if(line.charAt(0) == ',') {
+                //            System.out.println(line);
+                ArrayList<String> dealerCards = new ArrayList<>();
+
+
+                if (line.substring(6, 7).equals("1")) {
+                    dealerCard = "A";
+                } else {
+                    dealerCard = line.substring(6, 7).toUpperCase();
+                }
+
+                dealerCards.add(dealerCard);
+                
+
+                int ourStart = 0;
+                int finishSearch = 0;
+                //identify the starting index of our cards
+                while (ourStart < line.length() && finishSearch < 11) {
+                    if (line.charAt(ourStart) == ',') {
+                        ourStart++;
+                        finishSearch++;
+                    } else if (line.charAt(ourStart) == '1') {
+                        ourStart += 6;
+                        finishSearch++;
+                    }
+                    // System.out.println(line.charAt(ourStart));
+                    // System.out.println(ourStart + " " + finishSearch);
+                }
+                // System.out.println(line.length());
+                String ourCardsList = line.substring(ourStart);
+
+                //delete ending 2 commas if there are any
+                while (ourCardsList.charAt(ourCardsList.length() - 1) == ',') {
+                    if (ourCardsList.charAt(ourCardsList.length() - 1) == ',') {
+                        ourCardsList = ourCardsList.substring(0, ourCardsList.length() - 1);
+                    }
+                }
+
+
+                //                String dealerSuit = String.valueOf(dealerCard.charAt(3));
+                //                String ourSuit = "";
+
+                //                String dealerVal = String.valueOf(dealerCard.charAt(4));
+                ArrayList<String> ourCards = new ArrayList<>();
+                //get the values from the hexcode of our cards
+               
+                String ourVal = "";
+                //get the values from the hexcode of our cards
+                int adjust = 0;
+                boolean canAdd = true;
+                for (int chr = 0; chr < ourCardsList.length(); chr++) {
+                    if (ourCardsList.charAt(chr) == ',') {
+                        adjust += 1;
+                        canAdd = true;
+                    }
+                    if (canAdd) {
+                        //                        ourSuit += ourCard.charAt(adjust * 6 + 3);
+//                            System.out.println(ourCard.charAt(adjust * 6 + 4));
+                        ourVal += ourCardsList.charAt(adjust * 6 + 4);
+                        canAdd = false;
+                    }
+                }
+
+
+                // System.out.println(ourCards);
+                // System.out.println(dealerCards);
+
+
+                ArrayList<String> absoluteDCards = dealerCards;
+                // System.out.println(absoluteDCards);
+
+                
+
+                HashMap<ArrayList<String>, String> finalOurCards = new HashMap<ArrayList<String>, String>();
+
+                for(int numRun = 0; numRun < 10; numRun ++){
+
+
+                    for (int j = 0; j < ourVal.length(); j++) {
+                        String c = String.valueOf(ourVal.charAt(j));
+                        ourCards.add(c.toUpperCase());
+                    }
+
+                    ArrayList<Double> res = new ArrayList<>();
+                    Deck currDeck = Deck.newDeck();
+                    dealerCards = new ArrayList<String>();
+                    dealerCards.addAll(absoluteDCards);
+                    // System.out.println(currDeck.next().toString());
+                    // System.out.println(currDeck);
+                    finalOurCards = new HashMap<ArrayList<String>, String>();
+                    // System.out.println(ourCards);
+
+
+
+                    finalOurCards = playStrategy(currDeck, ourCards, dealerCards);
+                    HashMap<ArrayList<String>, String> finalOurCardsNaive = playStrategyNaive(currDeck, ourCards, dealerCards);
+
+
+                    boolean dealerFinish = false;
+                    while(dealerFinish == false){
+                        if((getHandVal(dealerCards).get(0) >= 17  && getHandVal(dealerCards).get(0) <=21)|| getHandVal(dealerCards).get(1) > 17 || getHandVal(dealerCards).get(1) > 21){
+                            dealerFinish = true;
+                        } else {
+                            dealerCards.add(currDeck.next().rank().toString());
                         }
                     }
-                    ourCards.add(currDeck.next().rank().toString());
-                    if(currItr == 0){
-                        dealerCards.add(currDeck.next().rank().toString());
-                    }
-                    currItr += 1;
+                    
+
+                    // System.out.println(finalOurCards);
+
+                    int tempsum = 0;
+                    int tempsumNaive=0;
+        
+                    for(Double d : getEV(finalOurCards, dealerCards))
+                        tempsum += d;
+                        // System.out.println(sumEV);
+
+                    for(Double d : getEV(finalOurCardsNaive, dealerCards))
+                        tempsumNaive += d;
+        
+                    sumEV += tempsum;
+                    maxgain = Math.max(maxgain, tempsum);
+                    minloss = Math.min(minloss, tempsum);
+        
+                    sumEVNaive += tempsumNaive;
+                    maxgainNaive = Math.max(maxgainNaive, tempsumNaive);
+                    minlossNaive = Math.max(minlossNaive, tempsumNaive);
+
+                    // System.out.println(finalOurCards);
+
+                    output.clear();
+                    res.clear();
+                    ourCards.clear();
+
+
+
                 }
+
+                Double avg = sumEV / 10;
+                Double avgNaive = sumEVNaive / 10;
+
+                columns[0] = avgNaive.toString();
+                columns[1] = avg.toString();
+
+
+                System.out.println(avg);
+                // System.out.println(avgNaive);
+
             }
+
+            bw.write(String.join(",", columns));
+            bw.newLine();
+        
+        }
+
+        
+        
+            
+        // for(int numRun = 0; numRun < 1000000; numRun ++){
+        //     ArrayList<Double> res = new ArrayList<>();
+        //     Deck currDeck = Deck.newDeck();
+        //     ArrayList<String> dealerCards = new ArrayList<>();
+        //     ArrayList<String> ourCards = new ArrayList<>();
+        //     dealerCards.clear();
+        //     ourCards.clear();
+        //     res.clear();
+        //     int numOthers = Randoms.random().nextInt(4);
+        //     // System.out.println(numOthers);
+        //     ArrayList<ArrayList<String>> otherPlayerCards = new ArrayList<>();
+        //     for(int j = 0; j < numOthers; j ++){
+        //         otherPlayerCards.add(new ArrayList<>(Arrays.asList("100","100")));
+        //     }
+        //     int currItr = 0;
+        //     if(currDeck.hasNext() == true){
+        //         for(int i = 0; i < 2; i ++){
+        //             for(int itr = 0; itr < numOthers; itr ++){
+        //                 try{
+        //                     String retVal = currDeck.next().rank().toString();
+        //                     otherPlayerCards.get(itr).set(currItr, retVal);
+        //                 } catch(IndexOutOfBoundsException e){
+        //                     System.out.println("Errro: " + e);
+        //                 }
+        //             }
+        //             ourCards.add(currDeck.next().rank().toString());
+        //             if(currItr == 0){
+        //                 dealerCards.add(currDeck.next().rank().toString());
+        //             }
+        //             currItr += 1;
+        //         }
+        //     }
 
 
 
             
-            ArrayList<String> testOurCards = new ArrayList<>(Arrays.asList("A", "A"));
-            ArrayList<String> testDealerCards = new ArrayList<>(Arrays.asList("6"));
-            double EV = 0.0;
-            double handDollarVal = 1.0;
-            boolean isComplete = false;
-            ArrayList<ArrayList<String>> ourCardsVar = new ArrayList<>();
-            String ourStringComparotorPair2 = "";
-            String strategy = "";
-            // System.out.println("other " + otherPlayerCards);
-            // System.out.println("our " + testOurCards);
-            // System.out.println("dealer " + testDealerCards);
+        //     ArrayList<String> testOurCards = new ArrayList<>(Arrays.asList("A", "A"));
+        //     ArrayList<String> testDealerCards = new ArrayList<>(Arrays.asList("6"));
+        //     double EV = 0.0;
+        //     double handDollarVal = 1.0;
+        //     boolean isComplete = false;
+        //     ArrayList<ArrayList<String>> ourCardsVar = new ArrayList<>();
+        //     String ourStringComparotorPair2 = "";
+        //     String strategy = "";
+        //     // System.out.println("other " + otherPlayerCards);
+        //     System.out.println("our " + testOurCards);
+        //     System.out.println("dealer " + testDealerCards);
 
 
-            output.clear();
-            HashMap<ArrayList<String>, String> finalOurCards = playStrategy(currDeck, ourCards, dealerCards);
+        //     output.clear();
+        //     HashMap<ArrayList<String>, String> finalOurCards = playStrategy(currDeck, ourCards, dealerCards);
 
-            boolean dealerFinish = false;
-            while(dealerFinish == false){
-                if((getHandVal(dealerCards).get(0) >= 17  && getHandVal(dealerCards).get(0) <=21)|| getHandVal(dealerCards).get(1) > 17 || getHandVal(dealerCards).get(1) > 21){
-                    dealerFinish = true;
-                } else {
-                    dealerCards.add(currDeck.next().rank().toString());
-                }
-            }
+        //     boolean dealerFinish = false;
+        //     while(dealerFinish == false){
+        //         if((getHandVal(dealerCards).get(0) >= 17  && getHandVal(dealerCards).get(0) <=21)|| getHandVal(dealerCards).get(1) > 17 || getHandVal(dealerCards).get(1) > 21){
+        //             dealerFinish = true;
+        //         } else {
+        //             dealerCards.add(currDeck.next().rank().toString());
+        //         }
+        //     }
 
             
-            // System.out.println(numRun);
-            // System.out.println(getEV(finalOurCards, dealerCards));
-            // System.out.println("new our cards " + finalOurCards);
-            // System.out.println("EV" + getEV(finalOurCards, dealerCards));
+        //     // System.out.println(numRun);
+        //     // System.out.println(getEV(finalOurCards, dealerCards));
+        //     // System.out.println("new our cards " + finalOurCards);
+        //     // System.out.println("EV" + getEV(finalOurCards, dealerCards));
 
-            int tempsum = 0;
-            int tempsumNaive=0;
+        //     int tempsum = 0;
+        //     int tempsumNaive=0;
 
-            for(Double d : getEV(finalOurCards, dealerCards))
-                tempsum += d;
-                // System.out.println(sumEV);
-            HashMap<ArrayList<String>, String> finalOurCardsNaive = playStrategyNaive(currDeck, ourCards, dealerCards);
-            for(Double d : getEV(finalOurCardsNaive, dealerCards))
-                tempsumNaive += d;
+        //     for(Double d : getEV(finalOurCards, dealerCards))
+        //         tempsum += d;
+        //         // System.out.println(sumEV);
+        //     HashMap<ArrayList<String>, String> finalOurCardsNaive = playStrategyNaive(currDeck, ourCards, dealerCards);
+        //     for(Double d : getEV(finalOurCardsNaive, dealerCards))
+        //         tempsumNaive += d;
 
-            sumEV += tempsum;
-            maxgain = Math.max(maxgain, tempsum);
-            minloss = Math.min(minloss, tempsum);
+        //     sumEV += tempsum;
+        //     maxgain = Math.max(maxgain, tempsum);
+        //     minloss = Math.min(minloss, tempsum);
 
-            sumEVNaive += tempsumNaive;
-            maxgainNaive = Math.max(maxgainNaive, tempsumNaive);
-            minlossNaive = Math.max(minlossNaive, tempsumNaive);
-        }    
-        Double avg = sumEV / 1000000;
-        Double avgNaive = sumEVNaive / 1000000;
-        System.out.println(avg);
-        System.out.println("LOSS " + minloss + " " + "MAX " + maxgain);
-        System.out.println("avgNaive " + avgNaive);
-        System.out.println("LOSS " + minlossNaive + " " + "MAX " + maxgainNaive);
+        //     sumEVNaive += tempsumNaive;
+        //     maxgainNaive = Math.max(maxgainNaive, tempsumNaive);
+        //     minlossNaive = Math.max(minlossNaive, tempsumNaive);
+        // }    
+        // Double avg = sumEV / 1000000;
+        // Double avgNaive = sumEVNaive / 1000000;
+        // System.out.println(avg);
+        // System.out.println("LOSS " + minloss + " " + "MAX " + maxgain);
+        // System.out.println("avgNaive " + avgNaive);
+        // System.out.println("LOSS " + minlossNaive + " " + "MAX " + maxgainNaive);
+
+        br.close();
+        bw.close();
 
 
     }
@@ -1581,13 +1760,19 @@ public class App
         String ourStringComparotorPair = "";
         //also need to c hekc that we oinly have 2 cards fgor a pair
 
-        if(ourCards.get(0).equals(ourCards.get(1))){
-            if(ourCards.get(0).equals("J") || ourCards.get(0).equals("Q") || ourCards.get(0).equals("K")){
+        ArrayList<String> currCards = new ArrayList<String>();
+        currCards = ourCards;
+
+
+        if(currCards.get(0).equals(currCards.get(1))){
+            if(currCards.get(0).equals("A") || currCards.get(0).equals("B") || currCards.get(0).equals("D") || currCards.get(0).equals("E") 
+            || currCards.get(0).equals("J") || currCards.get(0).equals("Q") || currCards.get(0).equals("K")){
                 ourStringComparotorPair += "10";
             } else{
-                ourStringComparotorPair += ourCards.get(0);
+                ourStringComparotorPair += currCards.get(0);
             }
-            if(dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")){
+            if(dealerCards.get(0).equals("A") || dealerCards.get(0).equals("B") || dealerCards.get(0).equals("D") || dealerCards.get(0).equals("E") 
+            || dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")){
                 ourStringComparotorPair += "10";
             } else{
                 ourStringComparotorPair += dealerCards.get(0);
@@ -1601,7 +1786,7 @@ public class App
 
         if (hardHandTotalVal > 21) {
             // System.out.println("BUST");
-            output.put(ourCards, "BUST");
+            output.put(currCards, "BUST");
             return output;
         }
 
@@ -1615,12 +1800,16 @@ public class App
             decision = doubleVals.get(ourStringComparotorPair);
         }
 
+        
+
         else if (softHandTotalVal != hardHandTotalVal && softHandTotalVal > 10 && softHandTotalVal <= 20) {
             String keyVal = "";
-            if (dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")) {
+            if (dealerCards.get(0).equals("A") || dealerCards.get(0).equals("B") || dealerCards.get(0).equals("D") || dealerCards.get(0).equals("E")
+            || dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")) {
                 keyVal = String.valueOf(softHandTotalVal) + "10";
             } else {
                 keyVal = (String.valueOf(softHandTotalVal) + dealerCards.get(0));
+                
             }
             if (handNumCount == 2) {
                 decision = softVals.get(keyVal)[0];
@@ -1630,7 +1819,8 @@ public class App
 
         } else {
             String keyVal = "";
-            if (dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")) {
+            if (dealerCards.get(0).equals("A") || dealerCards.get(0).equals("B") || dealerCards.get(0).equals("D") || dealerCards.get(0).equals("E") 
+            || dealerCards.get(0).equals("J") || dealerCards.get(0).equals("Q") || dealerCards.get(0).equals("K")) {
                 keyVal = String.valueOf(hardHandTotalVal) + "10";
             } else {
                 keyVal = (String.valueOf(hardHandTotalVal) + dealerCards.get(0)).toUpperCase();
@@ -1643,60 +1833,84 @@ public class App
         }
 
         // System.out.println(decision);
-        // System.out.println(ourCards.get(1));
+        // System.out.println(currCards.get(1));
+
 
         if (decision == "STAY"){
-            output.put(ourCards,  "STAY");
+            output.put(currCards,  "STAY");
+            // System.out.println(output);
+
         } else if (decision == "DOUBLE") {
-            ourCards.add(currDeck.next().rank().toString());
-            output.put(ourCards, "DOUBLE");
+            currCards.add(currDeck.next().rank().toString());
+            output.put(currCards, "DOUBLE");
 
         } else if (decision == "SURRENDER") {
-            output.put(ourCards, "SURRENDER");
+            output.put(currCards, "SURRENDER");
         } else if (decision == "HIT") {
-            ourCards.add(currDeck.next().rank().toString());
-            playStrategy(currDeck, ourCards, dealerCards);
+            currCards.add(currDeck.next().rank().toString());
+
+            playStrategy(currDeck, currCards, dealerCards);
         } else if (decision == "SPLIT") {
-            ArrayList<String> hand1 = new ArrayList<String>(Arrays.asList(ourCards.get(0)));
+            ArrayList<String> hand1 = new ArrayList<String>(Arrays.asList(currCards.get(0)));
             hand1.add(currDeck.next().rank().toString());
             playStrategy(currDeck, hand1, dealerCards);
-            ArrayList<String> hand2 = new ArrayList<String>(Arrays.asList(ourCards.get(1)));
+            ArrayList<String> hand2 = new ArrayList<String>(Arrays.asList(currCards.get(1)));
             hand2.add(currDeck.next().rank().toString());
             playStrategy(currDeck, hand2, dealerCards);
             // System.out.println("new our cards " + hand1 + " " + hand2);
 
 
-
         }
 
-        // System.out.println(ourCards);
+
+
+        // System.out.println(currCards);
         // System.out.println(output);
         ArrayList<String> error = new ArrayList<String>();
         error.add("failed");
+
+        // System.out.println(output);
+
 
         return output;
 
 
     }
+
     private static HashMap<ArrayList<String>, String> playStrategyNaive(Deck currDeck, ArrayList<String> ourCards, ArrayList<String> dealerCards){
         HashMap<ArrayList<String>, String> outputNaive = new HashMap<ArrayList<String>, String>();
 
-        int hardHandTotalVal = getHandVal(ourCards).get(1);
-        int softHandTotalVal = getHandVal(ourCards).get(0);
+        ArrayList<String> currCards = new ArrayList<String>();
+        currCards = ourCards;
+
+
+        int hardHandTotalVal = getHandVal(currCards).get(1);
+        int softHandTotalVal = getHandVal(currCards).get(0);
         if(hardHandTotalVal > 21){
-            outputNaive.put(ourCards, "BUST");
+            outputNaive.put(currCards, "BUST");
         }
         else if (hardHandTotalVal > 11) {
-            outputNaive.put(ourCards, "STAY");
+            outputNaive.put(currCards, "STAY");
         } else {
             if (softHandTotalVal > 17) {
-                outputNaive.put(ourCards, "STAY");
+                outputNaive.put(currCards, "STAY");
             } else {
-                ourCards.add(currDeck.next().rank().toString());
-                playStrategyNaive(currDeck, ourCards, dealerCards);
+                currCards.add(currDeck.next().rank().toString());
+                playStrategyNaive(currDeck, currCards, dealerCards);
             }
         }
         return outputNaive;
+    }
+
+    public static void main(String[] args) throws Exception {
+        //Define in and out file absolute paths
+        File inFile = new File(
+            "/Users/roymontemayor/Desktop/Rice/Spring 2023/COMP 380/BlackJack Software/BlackJack/HW4/hw4.csv");
+        File outFile = new File(
+            "/Users/roymontemayor/Desktop/Rice/Spring 2023/COMP 380/BlackJack Software/COMP_380_HW_4_Output.csv");
+
+        bjGame(inFile, outFile);
+
     }
 
 }
