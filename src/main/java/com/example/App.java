@@ -1440,7 +1440,7 @@ public class App
                         nextHandToPlay = handRight;
 
                         if (currDecision == "SPLIT") {
-                            scoreSplit = getSplitScore(handLeft, currDeck, dealer1, nextHandToPlay);
+                            scoreSplit = calc_split(handLeft.get(0), decision);
 
                         }
 
@@ -1508,6 +1508,147 @@ public class App
 
         return currScore;
     }
+
+    ArrayList<String> played_res = new ArrayList<String>();
+ArrayList<String> theor_res = new ArrayList<String>();
+
+
+private static double calc_split(String curr_player, String curr_move) {
+		ArrayList<String> ourCards = getCurrHand();
+		ArrayList<String>  dealerCards = getDealerHand();
+		ArrayList<String>  opCards = getOtherHand();
+		if (played_res.containsKey(curr_move)) {
+			return played_res.get(curr_move); 
+		}
+		//min score
+		double score_res = -1000;
+		String poss_move = "";
+		HashMap<Integer, Integer> cardCounts = getCounts();
+		if (getHand(ourCards).size() == 2) {
+			score_res = -0.5;
+			poss_move = "SURRENDER";
+			
+			// if this ourCards should split, try all splitting possibilities
+			if (ourCards.get(0) == ourCards.get(1)) {
+				double final_split = 0.0;
+				var tempSet = cardCounts.entrySet();
+				for (var entry1 : tempSet) {
+					if (entry1.getValue() == 0) {
+						continue;
+					}
+					int tempCount1 = entry1.getValue() - 1;
+					for (var entry2 : tempSet) {
+						if (entry2.getValue() == 0 || (entry2.getKey().equals(entry1.getKey()) && tempCount1 == 0)) {
+							continue;
+						}
+						// draw new cards for both hands, update the states to reflect the new missing cards
+						ourCards.add(getNewCard());
+						ourCards.add(getNewCard());
+						dealerCards.add(getNewCard());
+						dealerCards.add(getNewCard());
+						opCards.add(getNewCard());
+						opCards.add(getNewCard());
+						all_player_cards.addAll(opCards);
+						//iterate to the next move and
+						curr_move += 1;
+						//recurse
+						final_split = calc_split(ourCards, "SPLIT");
+					}
+				}
+				//check to see if the score is better
+				if (score_res <= final_split ) {
+					score_res = final_split;
+					poss_move = "SPLIT";
+				}
+			}
+			//check double
+			double double_res = 0.0;
+			var iterSet = cardCounts.entrySet();
+			//go through the possible cards
+			for (var entry : iterSet) {
+				//try to iterate through the deck
+				String card = getCurrCard();
+				if (currDeck[entry] != null) {
+					//check 
+					while (curr_player.getCurrCard().get(entry) != null) {
+						int check = entry.getValue() / getMaxCards();
+						double_res += check * getDealerOutcome(dealerCards, "DOUBLE");
+					}
+					//default case
+					poss_move = "DOUBLE";
+					int check = entry.getValue() / getMaxCards();
+					double_res += check * getDealerOutcome(dealerCards, "DOUBLE");
+				} else {
+					// recurse through again
+					poss_move = "DOUBLE";
+					double_res += calc_split(ourCards, "SPLIT");
+				}
+			}
+			if (double_res >= score_res) {
+				score_res = double_res;
+				poss_move = "DOUBLE";
+			}
+		}
+		// check stay
+		double stay_res = 0.0;
+		//if the entry is null
+		if (currDeck[entry] == null) {
+			while (curr_player.getCurrCard().get(entry) != null) {
+				stay_res += getDealerOutcome(dealerCards, getPrevMove());
+			}
+			curr_move = "STAY";
+			stay_res += getDealerOutcome(dealerCards, "STAY");
+			//otherwise we split
+		} else {
+			position.lastMove = "STAY";
+			stay_res += calc_split(ourCards,"SPLIT");
+		}
+		//check to see if the bound is better
+		if (stay_res >= score_res) {
+			score_res = stay_res;
+			poss_move = "STAY";
+		}
+		// check hit
+		double hit_res = 0.0;
+		var iterSet = cardCounts.entrySet();
+		//go through the potential cards
+		for (var entry : tempSet) {
+
+			if (curr_player.getCurrCard().get(entry) != null) {
+				if (curr_player.getCurrCard().findSVal() > 21  || curr_player.getCurrCard().findHVal() > 21) {
+					///first card busted
+					poss_move = "HIT";
+					double tp = entry.getValue() / getMaxCards();
+					hit_res += tp * calc_split(ourCards, "SPLIT");
+				} else {
+					double tp = entry.getValue() / getMaxCards();
+					hit_res += tp * calc_split(ourCards, "HIT");
+				}
+			} else {
+				if (curr_player.getCurrCard2().findSVal() > 21  || curr_player.getCurrCard2().findHVal() > 21) {
+					//second split is busted
+					while (curr_player.getCurrCard().get(entry) != null) {
+						double tp = entry.getValue() / getMaxCards();
+						hit_res += tp * getDealerOutcome(dealerCards, "HIT");
+					}
+					poss_move = "HIT"
+					double tp = entry.getValue() / getMaxCards();
+					hit_res += tp * getDealerOutcome(dealerCards, "HIT");
+				} else {
+					double tp = entry.getValue() / getMaxCards();
+					hit_res += tp * calc_split(ourCards, "HIT");
+				}
+			}
+		}
+		if (score_res <= hit_res) {
+			score_res = hit_res;
+			poss_move = "HIT";
+		}
+		//base case
+		played_res.put(ourCards, score_res);
+		theor_res.put(ourCards, poss_move);
+		return score_res;
+	}
 
     public static double getDealerOutcome(String currCard, String decision, String dealerCard, Deck currDeck) {
         
