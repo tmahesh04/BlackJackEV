@@ -1100,6 +1100,10 @@ public class App
         String line;
         //iterate through all lines in csv
         while ((line = br.readLine()) != null) {
+            if(line.length() == 0 ){
+                break;
+            }
+            // System.out.println(line.charAt(0));
             String dealerCard = "";
             //split columns for output
             String[] columns = line.split(",");
@@ -1179,8 +1183,13 @@ public class App
                 
 
                 HashMap<ArrayList<String>, String> finalOurCards = new HashMap<ArrayList<String>, String>();
+                sumEV = 0;
+                sumEVNaive = 0;
+                // System.out.println("before " + sumEV);
+                // System.out.println("before1 " + sumEVNaive);
 
-                for(int numRun = 0; numRun < 10; numRun ++){
+
+                for(int numRun = 0; numRun < 1000000; numRun ++){
 
 
                     for (int j = 0; j < ourVal.length(); j++) {
@@ -1243,15 +1252,18 @@ public class App
 
                 }
 
-                Double avg = sumEV / 10;
-                Double avgNaive = sumEVNaive / 10;
+                Double avg = sumEV / 1000000;
+                Double avgNaive = sumEVNaive / 1000000;
 
                 columns[0] = avgNaive.toString();
                 columns[1] = avg.toString();
 
+                // System.out.println("after " + sumEV);
+                // System.out.println("after1 " + sumEVNaive);
 
-                System.out.println(avg);
-                // System.out.println(avgNaive);
+
+                System.out.println("Wiki:" + avg);
+                System.out.println("Naive" + avgNaive);
 
             }
 
@@ -2102,9 +2114,9 @@ public class App
     public static void main(String[] args) throws Exception {
         //Define in and out file absolute paths
         File inFile = new File(
-            "/Users/roymontemayor/Desktop/Rice/Spring 2023/COMP 380/BlackJack Software/BlackJack/HW4/hw4.csv");
+            "/Users/thush/Downloads/hw4.csv");
         File outFile = new File(
-            "/Users/roymontemayor/Desktop/Rice/Spring 2023/COMP 380/BlackJack Software/COMP_380_HW_4_Output.csv");
+            "/Users/thush/Desktop/COMP_380_HW_4_Output_2.csv");
 
         bjGame(inFile, outFile);
 
