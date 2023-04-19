@@ -1363,6 +1363,203 @@ public class App
 
     static HashMap<ArrayList<String>, String> output = new HashMap<ArrayList<String>, String>();
 
+    public static double evalPreviousScore(Deck currDeck, ArrayList<String> ourCards, ArrayList<String> dealerCard, String decision) {
+        double currScore = 0.0;
+
+
+        if (getHandVal(ourCards).get(0) > 21 || getHandVal(ourCards).get(1) > 17){
+            if (decision == "DOUBLE") {
+                currScore = -2.0;
+
+            } else {
+                currScore = -1.0;
+            }
+            return currScore;
+
+        }
+
+
+        String currDecision = "";
+        Boolean cardsRemaining = true;
+
+        if (currDeck.hasNext() == false){
+            cardsRemaining = false;
+        }
+
+        if (ourCards.size() == 2 && cardsRemaining == true){
+            currDecision = "SURRENDER";
+            currScore = -0.5;
+            double scoreSplit = 0.0;
+
+
+            if (ourCards.get(0) == ourCards.get(1)){
+                currDecision = "SPLIT";
+
+                while (currDeck.hasNext() == true) {
+                    if (currDeck.next().rank().toString() == "0") {
+                        continue;
+                    }
+
+                    int temp1 = Integer.parseInt(String.valueOf(currDeck.next().rank().toString())) - 1;
+
+                    while (currDeck.hasNext() == true) {
+
+                        ArrayList<String> handLeft = new ArrayList<String>();
+                        ArrayList<String> handRight = new ArrayList<String>();
+
+                        handLeft.add(ourCards.get(0));
+                        handLeft.add(currDeck.next().rank().toString());
+
+                        handRight.add(ourCards.get(1));
+                        handRight.add(currDeck.next().rank().toString());
+
+                        String dealer1 = dealerCard.get(0);
+
+                        String otherHand1 = handLeft.get(0);
+                        String otherHand2 = handRight.get(0);
+
+                        if (otherHand1 == otherHand2) {
+                            currDecision = "SPLIT";
+                        } else {
+                            currDecision = "";
+                        }
+
+                        ArrayList<String> nextHandToPlay = new ArrayList<String>();
+                        nextHandToPlay = handRight;
+
+                        if (currDecision == "SPLIT") {
+                            scoreSplit = getSplitScore(handLeft, currDeck, dealer1, nextHandToPlay);
+
+                        }
+
+
+                    }
+
+
+                }
+
+                if (scoreSplit >= currScore) {
+                    currScore = scoreSplit;
+                    currDecision = "SPLIT";
+                }
+    
+            }
+
+            String dealer1 = dealerCard.get(0);
+
+            double scoreDouble = 0.0;
+
+            while (currDeck.hasNext() == true) {
+                if (currDeck.next().rank().toString() == "0") {
+                    continue;
+                }
+    
+                String nextCard = currDeck.next().rank().toString();
+    
+                scoreDouble += ((Integer.parseInt(String.valueOf(nextCard)) - 1) / getDealerOutcome(nextCard, "DOUBLE", dealer1, currDeck));
+    
+            }
+
+            if (scoreDouble >- currScore) {
+                currScore =scoreDouble;
+                currDecision = "DOUBLE";
+            }
+
+        }
+
+        String dealer1 = dealerCard.get(0);
+
+
+        double scoreStay = 0.0;
+
+        scoreStay = getDealerOutcome(currDeck.next().rank().toString(), "STAY", dealer1, currDeck);
+
+        if (scoreStay >= currScore) {
+            currScore = scoreStay;
+            currDecision = "STAY";
+        }
+
+        double scoreHit = 0.0;
+
+        while (currDeck.hasNext() == true) {
+            String nextCard = currDeck.next().rank().toString();
+
+            scoreHit += ((Integer.parseInt(String.valueOf(nextCard)) - 1) / getDealerOutcome(nextCard, "HIT", dealer1, currDeck));
+        }
+
+        if (scoreHit >= currScore) {
+            currScore = scoreHit;
+            currDecision = "HIT";
+        }
+
+        System.out.println(currDecision);
+
+        return currScore;
+    }
+
+    public static double getDealerOutcome(String currCard, String decision, String dealerCard, Deck currDeck) {
+        
+        if (decision == "") {
+            return 0.0;
+        }
+
+        ArrayList<String> currHand = new ArrayList<String>();
+        currHand.add(currCard);
+
+        double score = 0.0;
+
+        if (getHandVal(currHand).get(1) >= 21  && getHandVal(currHand).get(0) >= 17) {
+            if (decision == "DOUBLE"){
+                return -2.0;
+            } else {
+                return -1.0;
+            }
+        }
+
+        ArrayList<String> dealerCards = new ArrayList<String>();
+        dealerCards.add(dealerCard);
+
+        if ((dealerCard == "1" && getHandVal(dealerCards).get(1) >= 17) || getHandVal(dealerCards).get(0) >= 17) {
+            int dealerSoft = getHandVal(dealerCards).get(0);
+            int dealerHard = getHandVal(dealerCards).get(1);
+            int dealerCardRank = (Integer.parseInt(String.valueOf(dealerCard)));
+            int currCardRank = (Integer.parseInt(String.valueOf(currCard)));
+
+            if (dealerSoft > 21) {
+                score = -1;
+            } else if (dealerCardRank > currCardRank && dealerCardRank <= 21) {
+                score = -1;
+            } else if (dealerCardRank < currCardRank) {
+                score = 1;
+            } else if (dealerHard > 21) {
+                score = 1;
+            } else if (currCardRank == 1) {
+                score = 1.5;
+            } else if (dealerCardRank == currCardRank) {
+                score = 0;
+            } else {
+                System.out.println("Error calculating outcome");
+            }
+
+            if (decision == "DOUBLE") {
+                score += score;
+            }
+
+        }
+
+        while (currDeck.hasNext() == true) {
+            if (currDeck.next().rank().toString() == "0") {
+                continue;
+            }
+
+            String nextCard = currDeck.next().rank().toString();
+            score += ((Integer.parseInt(String.valueOf(nextCard)) - 1) / getDealerOutcome(nextCard, "DOUBLE", dealerCard, currDeck));
+        }
+
+        return score;
+
+    }
+
     private static HashMap<ArrayList<String>, String> playStrategy(Deck currDeck, ArrayList<String> ourCards, ArrayList<String> dealerCards) {
 
         Hashtable<String, String[]> hardVals = new Hashtable<>();
